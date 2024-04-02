@@ -15,7 +15,7 @@
         <ul>
             @foreach (var user in users)
             {
-                <li>@user</li>
+                <li>@user.Name - @user.Email</li>                
             }
         </ul>
     </div>
@@ -90,7 +90,7 @@
 @code {
     private HubConnection hubConnection;
     private string message = string.Empty;
-    private List<string> users = new List<string>(); // Mock list for demo purposes
+    private List<User> users = new();
     private string username = string.Empty;
 
     private string privateRecipient = string.Empty;
@@ -103,16 +103,25 @@
     private List<string> receivedPrivateMessages = new();
     private List<string> receivedPublicMessages = new();
 
+    class User(string connectionId, string email, string name)
+    {
+        public string ConnectionId { get; set; } = connectionId;
+        public string Email { get; set; } = email;
+        public string Name { get; set; } = name;
+    }
+
     protected override async Task OnInitializedAsync()
     {
         hubConnection = new HubConnectionBuilder()
             .WithUrl(new Uri("https://localhost:7011/chat-hub"))
             .Build();
 
-        hubConnection.On<string>("UserConnected", (username) =>
+        hubConnection.On<string>("UserConnected", async (username) =>
         {
             this.username = username;
             StateHasChanged();
+
+            await hubConnection.SendAsync("AssociateConnectionToUser", "vrmvinicius@gmail.com", "Vinicius");            
         });
 
         hubConnection.On<string>("ReceiveMessage", (receivedMessage) =>
@@ -121,7 +130,7 @@
             StateHasChanged();
         });
 
-        hubConnection.On<IEnumerable<string>>("UsersUpdated", (updatedUsers) =>
+        hubConnection.On<IEnumerable<User>>("UsersUpdated", (updatedUsers) =>
         {
             users = updatedUsers.ToList();
             StateHasChanged();

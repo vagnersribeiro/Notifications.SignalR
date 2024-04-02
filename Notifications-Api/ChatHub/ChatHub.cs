@@ -3,15 +3,36 @@ using System.Collections.Concurrent;
 
 namespace Notifications_Api.ChatHub
 {
+    public class User(string connectionId, string email, string name)
+    {
+        public string ConnectionId { get; set; } = connectionId;
+        public string Email { get; set; } = email;
+        public string Name { get; set; } = name;
+    }
+    
     public class ChatHub : Hub<IChatClient>
     {
-        private static readonly ConcurrentDictionary<string, string> _users = new();
+        private static readonly ConcurrentDictionary<string, User> _users = new();
 
         public override async Task OnConnectedAsync()
         {
-            _users.TryAdd(Context.ConnectionId, Context.ConnectionId);
+            _users.TryAdd(Context.ConnectionId, new User(Context.ConnectionId, string.Empty, string.Empty));
 
             await Clients.Client(Context.ConnectionId).UserConnected(Context.ConnectionId);
+            await Clients.All.UsersUpdated(_users.Values);
+        }
+
+        public async Task AssociateConnectionToUser(string email, string name)
+        {
+            _users.TryGetValue(Context.ConnectionId, out User? user);
+            
+            if(user != null)
+            {
+                user.ConnectionId = Context.ConnectionId;
+                user.Email = email;
+                user.Name = name;
+            }
+
             await Clients.All.UsersUpdated(_users.Values);
         }
 
