@@ -142,9 +142,9 @@
             StateHasChanged();
         });
 
-        hubConnection.On<string, string>("ReceivePublicMessage", (usernameFrom, message) =>
+        hubConnection.On<User, string>("ReceivePublicMessage", (user, message) =>
         {
-            receivedPublicMessages.Add($"De:{usernameFrom} - {message}");
+            receivedPublicMessages.Add($"De:{user.Name} - {message}");
             StateHasChanged();
         });
 
@@ -179,7 +179,7 @@
     {
         if (!string.IsNullOrEmpty(publicMessage))
         {
-            await hubConnection.SendAsync("SendPublicMessage", this.username, publicMessage);
+            await hubConnection.SendAsync("SendPublicMessage", publicMessage);
             publicMessage = string.Empty;
             publicMessageSent = true;
         }

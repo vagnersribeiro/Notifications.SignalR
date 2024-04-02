@@ -6,7 +6,7 @@
         Task ReceiveMessage(string message);
         Task UsersUpdated(ICollection<User> users);
         Task ReceivePrivateMessage(string messageFrom, string message);
-        Task ReceivePublicMessage(string messageFrom, string message);
+        Task ReceivePublicMessage(User user, string message);
         Task AssociateConnectionToUser(string email, string name);
     }
 }

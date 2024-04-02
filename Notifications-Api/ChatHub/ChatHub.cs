@@ -46,9 +46,10 @@ namespace Notifications_Api.ChatHub
             await Clients.Client(usernameTo).ReceivePrivateMessage(usernameFrom, message);
         }
 
-        public async Task SendPublicMessage(string usernameFrom, string message)
+        public async Task SendPublicMessage(string message)
         {
-            await Clients.Others.ReceivePublicMessage(usernameFrom, message);
+            _users.TryGetValue(Context.ConnectionId, out User? user);
+            await Clients.All.ReceivePublicMessage(user, message);
         }
 
         public override async Task OnDisconnectedAsync(Exception? exception)
