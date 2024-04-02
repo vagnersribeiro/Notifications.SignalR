@@ -1,0 +1,185 @@
+﻿@page "/chatroom"
+@using Microsoft.AspNetCore.SignalR.Client
+@inject NavigationManager NavigationManager
+
+<div class="row">
+    <h3>Usuário: @username</h3>
+</div>
+
+<div class="row">
+    <div class="col-8">
+        <textarea @bind="message" @oninput="HandleInput" class="form-control" rows="5"></textarea>
+    </div>
+    <div class="col-4">
+        <h3>Usuários Conectados</h3>
+        <ul>
+            @foreach (var user in users)
+            {
+                <li>@user</li>
+            }
+        </ul>
+    </div>
+</div>
+
+<div>
+    <h3>Enviar Mensagem Pública</h3>    
+    <div class="form-group">
+        <label for="publicMessage">Mensagem:</label>
+        <input @bind="publicMessage" class="form-control" id="publicMessage" />
+    </div>
+    <button @onclick="SendPublicMessage" class="btn btn-primary">Enviar</button>
+
+    @if (publicMessageSent)
+    {
+        <p>Mensagem enviada com sucesso!</p>
+    }
+</div>
+
+<div>
+    <h3>Mensagens Públicas Recebidas</h3>
+    @if (receivedPublicMessages.Any())
+    {
+        <ul>
+            @foreach (var message in receivedPublicMessages)
+            {
+                <li>@message</li>
+            }
+        </ul>
+    }
+    else
+    {
+        <p>Nenhuma mensagem pública recebida.</p>
+    }
+</div>
+
+<div>
+    <h3>Enviar Mensagem Privada</h3>
+    <div class="form-group">
+        <label for="privateRecipient">Destinatário:</label>
+        <input @bind="privateRecipient" class="form-control" id="privateRecipient" />
+    </div>
+    <div class="form-group">
+        <label for="privateMessage">Mensagem:</label>
+        <input @bind="privateMessage" class="form-control" id="privateMessage" />
+    </div>
+    <button @onclick="SendPrivateMessage" class="btn btn-primary">Enviar</button>
+
+    @if (messageSent)
+    {
+        <p>Mensagem enviada com sucesso para @privateRecipient!</p>
+    }
+</div>
+
+<div>
+    <h3>Mensagens Privadas Recebidas</h3>
+    @if (receivedPrivateMessages.Any())
+    {
+        <ul>
+            @foreach (var message in receivedPrivateMessages)
+            {
+                <li>@message</li>
+            }
+        </ul>
+    }
+    else
+    {
+        <p>Nenhuma mensagem privada recebida.</p>
+    }
+</div>
+
+@code {
+    private HubConnection hubConnection;
+    private string message = string.Empty;
+    private List<string> users = new List<string>(); // Mock list for demo purposes
+    private string username = string.Empty;
+
+    private string privateRecipient = string.Empty;
+    private string privateMessage = string.Empty;
+    private bool messageSent = false;
+
+    private string publicMessage = string.Empty;
+    private bool publicMessageSent = false;
+
+    private List<string> receivedPrivateMessages = new();
+    private List<string> receivedPublicMessages = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(new Uri("https://localhost:7011/chat-hub"))
+            .Build();
+
+        hubConnection.On<string>("UserConnected", (username) =>
+        {
+            this.username = username;
+            StateHasChanged();
+        });
+
+        hubConnection.On<string>("ReceiveMessage", (receivedMessage) =>
+        {
+            message = receivedMessage;
+            StateHasChanged();
+        });
+
+        hubConnection.On<IEnumerable<string>>("UsersUpdated", (updatedUsers) =>
+        {
+            users = updatedUsers.ToList();
+            StateHasChanged();
+        });
+
+        hubConnection.On<string, string>("ReceivePrivateMessage", (usernameFrom, message) =>
+        {
+            receivedPrivateMessages.Add($"De:{usernameFrom} - {message}");
+            StateHasChanged();
+        });
+
+        hubConnection.On<string, string>("ReceivePublicMessage", (usernameFrom, message) =>
+        {
+            receivedPublicMessages.Add($"De:{usernameFrom} - {message}");
+            StateHasChanged();
+        });
+
+        await hubConnection.StartAsync();
+    }
+
+    private async Task UpdateMessage(string updatedMessage)
+    {
+        if (hubConnection != null)
+        {
+            await hubConnection.SendAsync("SendMessage", updatedMessage);
+        }
+    }
+
+    private async Task HandleInput(ChangeEventArgs e)
+    {
+        message = e.Value.ToString();
+        await UpdateMessage(message);
+    }
+
+    private async Task SendPrivateMessage()
+    {
+        if (!string.IsNullOrEmpty(privateRecipient) && !string.IsNullOrEmpty(privateMessage))
+        {
+            await hubConnection.SendAsync("SendPrivateMessage", this.username, privateRecipient, privateMessage);            
+            privateMessage = string.Empty;
+            messageSent = true;
+        }
+    }
+
+    private async Task SendPublicMessage()
+    {
+        if (!string.IsNullOrEmpty(publicMessage))
+        {
+            await hubConnection.SendAsync("SendPublicMessage", this.username, publicMessage);
+            publicMessage = string.Empty;
+            publicMessageSent = true;
+        }
+    }
+
+    public bool IsConnected => hubConnection.State == HubConnectionState.Connected;
+
+    public async ValueTask DisposeAsync()
+    {
+        await hubConnection.DisposeAsync();
+    }
+}
