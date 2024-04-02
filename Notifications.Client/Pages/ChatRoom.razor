@@ -113,7 +113,7 @@
     protected override async Task OnInitializedAsync()
     {
         hubConnection = new HubConnectionBuilder()
-            .WithUrl(new Uri("https://localhost:7011/chat-hub"))
+            .WithUrl(new Uri("https://notificationsapi20240402155013.azurewebsites.net/chat-hub"))//"https://localhost:7011/chat-hub"))
             .Build();
 
         hubConnection.On<string>("UserConnected", async (username) =>
@@ -121,7 +121,7 @@
             this.username = username;
             StateHasChanged();
 
-            await hubConnection.SendAsync("AssociateConnectionToUser", "vrmvinicius@gmail.com", "Vinicius");            
+            await hubConnection.SendAsync("AssociateConnectionToUser", "vrmvinicius@gmail.com", "Vinicius", "Avatar teste");            
         });
 
         hubConnection.On<string>("ReceiveMessage", (receivedMessage) =>
